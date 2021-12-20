@@ -25,7 +25,7 @@ passport.use(new JWTStrategy({
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
   secretOrKey   : Config.APP_SECRET
 }, (payload, done) => {
-  done(null, { username: payload.username });
+  done(null, payload);
 }));
 
 passport.use(new GithubStrategy({
@@ -33,28 +33,28 @@ passport.use(new GithubStrategy({
   clientSecret: Config.GITHUB_CLIENT_SECRET,
   callbackURL: Config.GITHUB_CALLBACK_URL
 }, (token, tokenSecret, profile, done) => {
-  // User.findOrCreate({ twitterId: profile.id }, function (err, user) {
-  done(null, profile);
+  const user = {
+    userId: profile.id,
+    username: profile.username,
+    url: profile.profileUrl,
+    displayName: profile.displayName,
+    provider: profile.provider
+  }
+
+  done(null, user);
 }));
 
 app.get('/secret',passport.authenticate('jwt', { session: false }), (req, res, next) => {
   const { user } = req;
-  res.json({ message: 'Secret Data', ...user });
-});
-
-app.get('/token', (req, res) => {
-  // TODO dummy!
-  const payload = { username: 'test1234' };
-
-  const token = jwt.sign(payload, Config.APP_SECRET);
-  res.json({ token });
+  res.json(user);
 });
 
 app.get('/auth/github', passport.authenticate('github'));
 
 app.get('/auth/github/callback', passport.authenticate('github', { failureRedirect: '/' }), (req, res) => {
-  console.log('/auth/github/callback');
-  res.json({ message: 'auth github', ...req.user });
+  const { user } = req;
+  const token = jwt.sign(user, Config.APP_SECRET);
+  res.json({ token });
 });
 
 server.listen(Config.SERVER_PORT, () =>
