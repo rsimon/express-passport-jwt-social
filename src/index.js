@@ -34,7 +34,7 @@ passport.use(new GithubStrategy({
   callbackURL: Config.GITHUB_CALLBACK_URL
 }, (token, tokenSecret, profile, done) => {
   // User.findOrCreate({ twitterId: profile.id }, function (err, user) {
-  done(null, { username: profile.id });
+  done(null, profile);
 }));
 
 app.get('/secret',passport.authenticate('jwt', { session: false }), (req, res, next) => {
@@ -54,7 +54,7 @@ app.get('/auth/github', passport.authenticate('github'));
 
 app.get('/auth/github/callback', passport.authenticate('github', { failureRedirect: '/' }), (req, res) => {
   console.log('/auth/github/callback');
-  res.json({ message: 'auth github' });
+  res.json({ message: 'auth github', ...req.user });
 });
 
 server.listen(Config.SERVER_PORT, () =>
