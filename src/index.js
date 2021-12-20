@@ -44,17 +44,20 @@ passport.use(new GithubStrategy({
   done(null, user);
 }));
 
-app.get('/secret',passport.authenticate('jwt', { session: false }), (req, res, next) => {
-  const { user } = req;
-  res.json(user);
-});
-
+// Forwards to Github OAuth login
 app.get('/auth/github', passport.authenticate('github'));
 
+// Callback from Github: token will be issued on success
 app.get('/auth/github/callback', passport.authenticate('github', { failureRedirect: '/' }), (req, res) => {
   const { user } = req;
   const token = jwt.sign(user, Config.APP_SECRET);
   res.json({ token });
+});
+
+// Test route - echos the user object if request has a valid token
+app.get('/secret',passport.authenticate('jwt', { session: false }), (req, res, next) => {
+  const { user } = req;
+  res.json(user);
 });
 
 server.listen(Config.SERVER_PORT, () =>
