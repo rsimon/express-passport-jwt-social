@@ -2,7 +2,10 @@ import express from 'express';
 import http from 'http';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
-import { ExtractJwt, Strategy as JWTStrategy } from 'passport-jwt';
+
+// Passport auth strategies
+import { Strategy as JWTStrategy, ExtractJwt } from 'passport-jwt';
+import { Strategy as GithubStrategy } from 'passport-github';
 
 import Config from './config';
 
@@ -12,11 +15,26 @@ const server = http.createServer(app);
 app.use(express.json());
 app.set('json spaces', 2);
 
+passport.serializeUser((user, done) =>
+  done(null, user));
+
+passport.deserializeUser((obj, done) =>
+  done(null, obj));
+
 passport.use(new JWTStrategy({
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
   secretOrKey   : Config.APP_SECRET
 }, (payload, done) => {
   done(null, { username: payload.username });
+}));
+
+passport.use(new GithubStrategy({
+  clientID: Config.GITHUB_CLIENT_ID,
+  clientSecret: Config.GITHUB_CLIENT_SECRET,
+  callbackURL: Config.GITHUB_CALLBACK_URL
+}, (token, tokenSecret, profile, done) => {
+  // User.findOrCreate({ twitterId: profile.id }, function (err, user) {
+  done(null, { username: profile.id });
 }));
 
 app.get('/secret',passport.authenticate('jwt', { session: false }), (req, res, next) => {
@@ -30,6 +48,13 @@ app.get('/token', (req, res) => {
 
   const token = jwt.sign(payload, Config.APP_SECRET);
   res.json({ token });
+});
+
+app.get('/auth/github', passport.authenticate('github'));
+
+app.get('/auth/github/callback', passport.authenticate('github', { failureRedirect: '/' }), (req, res) => {
+  console.log('/auth/github/callback');
+  res.json({ message: 'auth github' });
 });
 
 server.listen(Config.SERVER_PORT, () =>
